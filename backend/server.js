@@ -1,54 +1,50 @@
-require('dotenv').config({ path: __dirname + '/.env' });
+if (process.env.NODE_ENV !== "production") {
+  require("dotenv").config();
+}
+
 console.log("ENV CHECK:", {
-  host: process.env.DB_HOST,
-  user: process.env.DB_USER,
-  password: process.env.DB_PASSWORD,
-  database: process.env.DB_NAME
+  host: process.env.DB_HOST ,
+  user: process.env.DB_USER ,
+  password: process.env.DB_PASSWORD ,
+  database: process.env.DB_NAME ,
+  port: process.env.DB_PORT 
 });
+
 const express = require("express");
-const mysql = require("mysql2");
 const cors = require("cors");
 const jwt = require("jsonwebtoken");
 const bcrypt = require("bcryptjs");
+const db = require("./db").default;
 
 const app = express();
-app.use(
-  cors({
-    origin: "http://localhost:5173",
-    credentials: true,
-  })
-);
+
+// ✅ CORS (use only once)
+app.use(cors({ origin: "*", credentials: true }));
+
 app.use(express.json());
 
+// ================= ROUTES =================
+
+// external routes
 const historyRoutes = require("./routes/history");
 app.use("/api/history", historyRoutes);
 
-// 🌍 CORS (allow all for now)
-app.use(cors({ origin: "*" }));
-
-// 🔐 SECRET
-const JWT_SECRET = "your_secret_key";
-
-// 🛢️ MySQL connection
-const db = mysql.createConnection({
-  host: "localhost",
-  user: "root",
-  password: "1234",
-  database: "universal_system",
+// ================= TEST =================
+app.get("/", (req, res) => {
+  db.query("SELECT 1", (err) => {
+    if (err) {
+      console.error("❌ Query Error:", err.message);
+      return res.status(500).send("DB Error");
+    }
+    res.send("✅ Server + DB Working!");
+  });
 });
-
-db.connect((err) => {
-  if (err) {
-    console.error("DB connection error:", err);
-  } else {
-    console.log("MySQL Connected");
-  }
-});
-
 
 // ================= AUTH =================
 
-// ✅ REGISTER
+const JWT_SECRET = "your_secret_key";
+
+// REGISTER
 app.post("/api/register", async (req, res) => {
   const { username, password } = req.body;
 
@@ -68,8 +64,7 @@ app.post("/api/register", async (req, res) => {
   }
 });
 
-
-// ✅ LOGIN
+// LOGIN
 app.post("/api/login", (req, res) => {
   const { username, password } = req.body;
 
@@ -96,8 +91,8 @@ app.post("/api/login", (req, res) => {
   );
 });
 
+// ================= MIDDLEWARE =================
 
-// 🔒 MIDDLEWARE
 function verifyToken(req, res, next) {
   const authHeader = req.headers["authorization"];
 
@@ -113,16 +108,14 @@ function verifyToken(req, res, next) {
   });
 }
 
-
-// ✅ PROTECTED ROUTE
+// PROTECTED
 app.get("/api/protected", verifyToken, (req, res) => {
   res.json({ message: "Protected data", user: req.user });
 });
 
-
 // ================= SEARCH =================
 
-// 🔍 SEARCH
+// SEARCH
 app.get("/api/search", (req, res) => {
   const q = req.query.q;
 
@@ -137,13 +130,11 @@ app.get("/api/search", (req, res) => {
   db.query(sql, [q], (err, results) => {
     if (err) return res.status(500).json(err);
 
-    // 🔥 log search
+    // log search
     db.query(
-      `
-      INSERT INTO search_logs (query, count)
-      VALUES (?, 1)
-      ON DUPLICATE KEY UPDATE count = count + 1
-      `,
+      `INSERT INTO search_logs (query, count)
+       VALUES (?, 1)
+       ON DUPLICATE KEY UPDATE count = count + 1`,
       [q]
     );
 
@@ -151,48 +142,37 @@ app.get("/api/search", (req, res) => {
   });
 });
 
-
-// ⚡ AUTOCOMPLETE
+// AUTOCOMPLETE
 app.get("/api/autocomplete", (req, res) => {
   const q = req.query.q;
 
   if (!q) return res.json([]);
 
-  const sql = `
-    SELECT title FROM content
-    WHERE title LIKE ?
-    LIMIT 5
-  `;
-
-  db.query(sql, [`${q}%`], (err, results) => {
-    if (err) return res.status(500).json(err);
-
-    res.json(results.map((r) => r.title));
-  });
+  db.query(
+    "SELECT title FROM content WHERE title LIKE ? LIMIT 5",
+    [`${q}%`],
+    (err, results) => {
+      if (err) return res.status(500).json(err);
+      res.json(results.map((r) => r.title));
+    }
+  );
 });
 
-
-// 🔥 TRENDING
+// TRENDING
 app.get("/api/trending", (req, res) => {
-  const sql = `
-    SELECT query, count
-    FROM search_logs
-    ORDER BY count DESC
-    LIMIT 10
-  `;
-
-  db.query(sql, (err, results) => {
-    if (err) return res.status(500).json(err);
-
-    res.json(results);
-  });
+  db.query(
+    `SELECT query, count FROM search_logs ORDER BY count DESC LIMIT 10`,
+    (err, results) => {
+      if (err) return res.status(500).json(err);
+      res.json(results);
+    }
+  );
 });
-
 
 // ================= SERVER =================
 
 const PORT = process.env.PORT || 5000;
 
 app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
+  console.log(`🚀 Server running on port ${PORT}`);
 });
