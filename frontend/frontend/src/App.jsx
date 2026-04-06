@@ -35,7 +35,7 @@ function App() {
     debounceRef.current = setTimeout(async () => {
       try {
         const res = await fetch(
-          `http://localhost:5000/api/autocomplete?q=${value}`
+          `https://my-backend-kashpan.onrender.com/api/autocomplete?q=${value}`
         );
         const data = await res.json();
         setSuggestions(Array.isArray(data) ? data : []);
@@ -55,7 +55,7 @@ function App() {
 
     try {
       const res = await fetch(
-        `http://localhost:5000/api/search?q=${q}`,
+        `https://my-backend-kashpan.onrender.com/api/search?q=${q}`,
         {
           headers: {
             Authorization: token || "",
@@ -79,7 +79,7 @@ function App() {
   // 🔥 Trending
   const fetchTrending = async () => {
     try {
-      const res = await fetch("http://localhost:5000/api/trending");
+      const res = await fetch("https://my-backend-kashpan.onrender.com/api/trending");
       const data = await res.json();
 
       if (Array.isArray(data)) {
@@ -98,7 +98,7 @@ function App() {
   // 🕘 History
   const fetchHistory = async () => {
     try {
-      const res = await fetch("http://localhost:5000/api/history", {
+      const res = await fetch("https://my-backend-kashpan.onrender.com/api/history", {
         headers: {
           Authorization: token || "",
         },
